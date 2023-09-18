@@ -1,8 +1,23 @@
 # Hono Error Handler
 
-This is a custom error handler middleware for the [Hono](https://hono.dev/) web framework.
+Hono Error Handler is a custom error handler middleware for the [Hono](https://hono.dev/) web framework.
 It allows you to define and use your own error handling functions while providing some default error 
 handling behavior.
+
+## Table of Contents
+
+1. [Installation](#installation)
+2. [Usage](#usage)
+   - [Creating Error Handlers](#creating-error-handlers)
+   - [Adding The Error Handler To Your App](#adding-the-error-handler-to-your-app)
+   - [Throwing Custom Errors In Routes](#throwing-custom-errors-in-routes)
+3. [Custom Response Handler](#custom-response-handler)
+4. [Parameters](#parameters)
+   - [`errorHandler` Parameters](#errorhandler-parameters)
+   - [`ErrorResponse` Parameters](#errorresponse-parameters)
+5. [Contributing](#contributing)
+
+Your documentation is now structured and easy to navigate. If you have any further questions or need additional assistance, feel free to ask!
 
 ## Installation
 
@@ -16,28 +31,33 @@ bun install hono-error-handler
 
 ## Usage
 
-Simplify error handling in your JSON API applications with the `hono-error-handler` package. 
+Simplify error handling in your hono applications with the `hono-error-handler` package. 
 This package streamlines error management within your route handlers by providing an easy way to 
-create custom errors with associated status codes using `ErrorResponse`. By using the `errorHandler`, you can eliminate the need for extensive try-catch blocks in your routes, resulting in 
+create custom errors with associated status codes using `ErrorResponse`. 
+By using the `errorHandler`, you can eliminate the need for extensive try-catch blocks in your routes, resulting in 
 cleaner and more maintainable code. Additionally, the `errorHandler` ensures consistent error responses 
-in JSON format across your application. If you need to throw errors in your routes, 
-`ErrorResponse` simplifies the process. Without any custom error handlers defined, 
+in any format across your application. If you need to throw errors in your routes, 
+`ErrorResponse` simplifies the process. 
+
+>Without any custom error handlers defined, 
 the default behavior is to return a 500 Internal Server Error response in JSON.
 
-### Create Error Handlers
+### Creating Error Handlers
 
 **Syntax**: The function is defined as follows:
 ```ts
-const handleMongooseErrors = (error: CustomErrorHandler) => {
+import { Error } from 'hono-error-handler';
+
+const handleMongooseErrors = (error: Error) => {
   // Error handling logic here
 };
 ```
-> (error: CustomErrorHandler) => declares an arrow function that takes one parameter named error, 
-which is of type CustomErrorHandler.
+> (error: Error) => declares an arrow function that takes one parameter named error, 
+which is of type Error.
 
- - **Parameter (error: CustomErrorHandler)**: 
+ - **Parameter (error: Error)**: 
 The error parameter represents an error object that is expected to conform to the 
-CustomErrorHandler interface. This error will be passed to your function automatically.
+Error interface. This error will be passed to your function automatically.
 
 
 - **Using If Statements**: Inside the function, there are multiple if statements that check for specific 
@@ -52,7 +72,7 @@ informative error message and sets an appropriate status code. For example:
 // Mongoose bad ObjectId
 if (error.name === 'CastError') {
   error.message = 'Resource not found';
-  error.statusCode = 400;
+  error.statusCode = 404;
   return error;
 }
 ```
@@ -72,13 +92,13 @@ returned without modification.
 Here is a full example of a custom error handler with mongoose:
 
 ```ts
-import { CustomErrorHandler } from 'hono-error-handler';
+import { Error } from 'hono-error-handler';
 
-const handleMongooseErrors = (error: CustomErrorHandler) => {
+const handleMongooseErrors = (error: Error) => {
   // Mongoose bad ObjectId
   if (error.name === 'CastError') {
     error.message = 'Resource not found';
-    error.statusCode = 400;
+    error.statusCode = 404;
     return error;
   }
 
@@ -86,7 +106,7 @@ const handleMongooseErrors = (error: CustomErrorHandler) => {
   if (error.code === 11000) {
     const field = Object.keys(error.keyValue)[0];
     error.message = `${field} is already registered`;
-    error.statusCode = 400;
+    error.statusCode = 409;
     return error;
   }
 
@@ -132,11 +152,10 @@ const errorHandlers = [handleMongooseErrors, additionalErrorhander];
 ```
 
 Set up the error handler for your app. Pass in the `errorHandlers` array as the first argument to 
-`errorHandler`. You can also specify whether to print error stacks to the console 
-(optional, default is true) as the second argument.
+`errorHandler`. Optionally, you can also specify a custom response with the [Custom Response Handler](#custom-response-handler).
 
 ```ts
-app.onError(errorHandler(errorHandlers, false));
+app.onError(errorHandler(errorHandlers));
 ```
 ### Throwing Custom Errors In Routes
 
@@ -165,18 +184,73 @@ app.get('/exmaple', (c) => {
 
 > This will bypass the `errorHandler` and immediately send the response
 
+Certainly, here's the documentation for creating and using a custom response handler with the 
+`hono-error-handler` package:
+
+### Custom Response Handler
+
+An optional custom response handler in the `hono-error-handler` package allows you to define how error responses are formatted 
+and sent back to clients when an error occurs. To create a custom response handler, follow these steps:
+
+Define a function that takes two parameters:
+   - `error`: An object conforming to the `FormattedError` interface.
+   - `c`: The Hono [`Context`](https://hono.dev/api/context) Object.
+
+   The function will be responsible for constructing and sending the error response based on the provided 
+   `error` object.
+
+   **Syntax**:
+
+   ```ts
+   app.onError(errorHandler(myErrorHandler, (error, c) => {
+    return c.json({
+      error: error.message, 
+    }, 
+       error.statusCode,
+    )
+   }));
+   ```
+
+   - `(error: FormattedError, c: Context) =>` declares an arrow function that takes two parameters:
+`error` and `c`. `error` is expected to be of type `FormattedError`, and `c` is the Hono 
+`Context` object.
+
+If you would like to create your response handler in a separate file you can do the following.
+
+```ts
+import { ResponseHandler } from 'hono-error-handler';
+
+const customReponseHandler: ResponseHandler = (error: FormattedError, c: Context) => {
+   return c.json({
+              error: error.message,
+           },
+           error.statusCode,
+   );
+};
+```
+
+#### Default Response
+If you do not specify a custom response, the response will show in this format:
+
+```ts
+return c.json({
+    success: false,
+    message: error.message
+  },
+    error.statusCode
+  )
+```
 
 ## Parameters
 
-`errorHandler` Parameters
+### `errorHandler` Parameters
 
-| Parameter       | Type               | Description                                                                                                     | Default |
-|-----------------|--------------------|-----------------------------------------------------------------------------------------------------------------|---------|
-| `errorHandlers` | Array of Functions | An array of custom error handlers that modify error objects based on specific error conditions.                 | []      |
-| `printStack`    | Optional Boolean   | A boolean flag that determines whether to print the stack trace of the error to the console. Default is `true`. | `true`  |
+| Parameter         | Type               | Description                                                                                     | Default                                                 |
+|-------------------|--------------------|-------------------------------------------------------------------------------------------------|---------------------------------------------------------|
+| `errorHandlers`   | Array of Functions | An array of custom error handlers that modify error objects based on specific error conditions. | N/A                                                     |
+| `HandlerFunction` | Optional Function  | A function that allows you to customize the response or manage the Context before the response. | See [Custom Response Handler](#custom-response-handler) |
 
- `ErrorResponse` Parameters
-
+### `ErrorResponse` Parameters
 
 | Parameter    | Type    | Description                                                         | Default |
 |--------------|---------|---------------------------------------------------------------------|---------|
@@ -185,25 +259,29 @@ app.get('/exmaple', (c) => {
 
 ## Contributing
 
-We welcome contributions from the community to enhance and improve the `hono-error-handler` package. If you'd like to contribute, please follow these steps:
+We welcome contributions from the community to enhance and improve the `hono-error-handler` package. If you'd like to 
+contribute, please follow these steps:
 
-1. **Fork the Repository:** Start by forking the [hono-error-handler repository](https://github.com/nicoplyley/hono-error-handler) on GitHub to your own GitHub account.
+1. **Fork the Repository:** Start by forking the [hono-error-handler repository](https://github.com/nicoplyley/hono-error-handler) on GitHub to your own 
+GitHub account.
 
 2. **Clone the Repository:** Clone the forked repository to your local development environment:
 
    ```bash
-   git clone https://github.com/nicoplyley/hono-error-handler.git
+   git clone https://github.com/your-username/hono-error-handler.git
    ```
 
-3. **Create a New Branch:** Create a new branch for your contribution. Use a descriptive branch name that reflects the nature of your changes:
+3. **Create a New Branch:** Create a new branch for your contribution. Use a descriptive branch name that reflects the 
+nature of your changes:
 
    ```bash
    git checkout -b your-feature-name
    ```
 
-4. **Make Changes:** Implement your changes or additions to the codebase. Ensure that your code follows the project's coding style and conventions.
+4. **Make Changes:** Implement your changes or additions to the codebase. Ensure that your code follows the project's 
+coding style and conventions.
 
-5. **Test Your Changes:** Run tests to make sure your changes do not introduce new issues. If applicable, update or add tests to cover your code changes.
+5. **Test Your Changes:** Run tests to make sure your changes do not introduce new issues.
 
 6. **Commit Changes:** Commit your changes with a clear and concise commit message:
 
@@ -217,11 +295,13 @@ We welcome contributions from the community to enhance and improve the `hono-err
    git push origin your-feature-name
    ```
 
-8. **Create a Pull Request:** Go to the [hono-error-handler repository](https://github.com/nicoplyley/hono-error-handler) on GitHub, and you should see a "New Pull Request" button. Click it, and create a pull request from your forked branch to the main repository.
+8. **Create a Pull Request:** Go to the [hono-error-handler repository](https://github.com/nicoplyley/hono-error-handler) on GitHub, and you should see a 
+"New Pull Request" button. Click it, and create a pull request from your forked branch to the main repository.
 
-9. **Discuss and Review:** Participate in discussions and reviews related to your pull request. Make any necessary updates based on feedback from maintainers and contributors.
+9. **Discuss and Review:** Participate in discussions and reviews related to your pull request. Make any necessary 
+updates based on feedback from maintainers and contributors.
 
-10. **Merge and Deploy:** Once your pull request is approved, it will be merged into the main repository. The changes will be deployed in future releases.
+10. **Merge and Deploy:** Once your pull request is approved, it will be merged into the main repository. The changes 
+will be deployed in future releases.
 
 Thank you for contributing to `hono-error-handler`! Your contributions help make the package better for everyone.
-nicoplyley/hono-error-handler) on GitHub to your own GitHub account.
