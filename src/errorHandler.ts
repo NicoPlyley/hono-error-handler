@@ -1,34 +1,33 @@
-import { ErrorHandler } from 'hono';
-import { CustomErrorHandler } from './index';
+import { Context, ErrorHandler } from 'hono';
+import { Error, FormattedError, ResponseHandler }  from './index';
 
-const errorHandler =
-  (errorHandlers: Function[], printStack = true): ErrorHandler =>
-    async (err, c) => {
-      let error: CustomErrorHandler = err;
+const defaultResponseHandler: ResponseHandler = (error, c) => {
+  return c.json({
+    success: false,
+    message: error.message
+  },
+    error.statusCode
+  )
+}
 
-      if (printStack && error.stack) {
-        console.error(error.stack);
-      }
+const errorHandler = (errorHandlers: Function[], customHandler: ResponseHandler = defaultResponseHandler): ErrorHandler => {
+  return (err: Error, c) => {
+    let error: Error = err;
 
-      if (Array.isArray(errorHandlers) && errorHandlers.length > 0) {
-        if (!error.message || !error.statusCode && err) {
-          for (const handleError of errorHandlers) {
-            error = handleError(error);
+    if (Array.isArray(errorHandlers) && errorHandlers.length > 0) {
+      if (!error.message || !error.statusCode && error) {
+        for (const handleError of errorHandlers) {
+          error = handleError(error);
 
-            if (error.statusCode) {
-              break;
-            }
+          if (error.statusCode) {
+            break;
           }
         }
       }
+    }
 
-      return c.json(
-        {
-          success: false,
-          message: error.message || 'Internal server error',
-        },
-        error?.statusCode || 500,
-      );
-    };
+    return customHandler(error as FormattedError, c);
+  };
+};
 
 export default errorHandler;
