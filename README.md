@@ -17,8 +17,6 @@ handling behavior.
    - [`ErrorResponse` Parameters](#errorresponse-parameters)
 5. [Contributing](#contributing)
 
-Your documentation is now structured and easy to navigate. If you have any further questions or need additional assistance, feel free to ask!
-
 ## Installation
 
 You can install the package with:
@@ -183,9 +181,6 @@ app.get('/exmaple', (c) => {
 ```
 
 > This will bypass the `errorHandler` and immediately send the response
-
-Certainly, here's the documentation for creating and using a custom response handler with the 
-`hono-error-handler` package:
 
 ### Custom Response Handler
 
